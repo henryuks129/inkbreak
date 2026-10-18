@@ -1,0 +1,92 @@
+import {spawn} from 'node:child_process';
+import {mkdtemp,mkdir,writeFile,rm} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join,resolve} from 'node:path';
+
+// Isolated Chrome against our local app. No existing browser/profile is touched.
+const baseURL=process.argv[2]||'http://127.0.0.1:5173';
+const target=new URL(baseURL);
+if(!['127.0.0.1','localhost'].includes(target.hostname))throw Error('Only a localhost game URL is permitted.');
+const output=resolve(process.argv[3]||'docs/browserqa/hybrid');
+await mkdir(output,{recursive:true});
+const profile=await mkdtemp(join(tmpdir(),'inkbreak-chrome-'));
+const chrome=spawn('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',[
+  '--headless=new','--remote-debugging-address=127.0.0.1','--remote-debugging-port=9228',
+  '--user-data-dir='+profile,'--no-first-run','--no-default-browser-check',
+  '--window-size=1600,1000','--autoplay-policy=no-user-gesture-required','about:blank'
+],{stdio:['ignore','ignore','pipe']});
+let chromeLog='';chrome.stderr.on('data',x=>chromeLog+=x);
+const delay=ms=>new Promise(r=>setTimeout(r,ms));
+let ws;
+const report={baseURL,started:new Date().toISOString(),checks:[],consoleErrors:[],exceptions:[],screenshots:[],notes:['Headless Chrome is an isolated automated environment; its FPS is not a hardware performance acceptance test.']};
+let sequence=0;const pending=new Map();
+const send=(method,params={})=>new Promise((resolve,reject)=>{
+ const id=++sequence;const timeout=setTimeout(()=>{pending.delete(id);reject(Error('CDP timeout: '+method));},15000);
+ pending.set(id,{resolve,reject,timeout});ws.send(JSON.stringify({id,method,params}));
+});
+const evaluate=async expression=>{const {result,exceptionDetails}=await send('Runtime.evaluate',{expression,awaitPromise:true,returnByValue:true,userGesture:true});if(exceptionDetails)throw Error(exceptionDetails.text+': '+JSON.stringify(exceptionDetails.exception));return result.value;};
+const check=(name,ok,details)=>{report.checks.push({name,ok,details});console.log((ok?'PASS ':'FAIL ')+name);};
+async function waitFor(expression,timeout=20000){const end=Date.now()+timeout;while(Date.now()<end){if(await evaluate(expression))return;await delay(200);}throw Error('Timed out waiting for '+expression);}
+async function click(selector){const box=await evaluate('(()=>{const e=document.querySelector('+JSON.stringify(selector)+');if(!e)return null;const r=e.getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2}})()');if(!box)throw Error('Missing '+selector);await send('Input.dispatchMouseEvent',{type:'mousePressed',...box,button:'left',clickCount:1});await send('Input.dispatchMouseEvent',{type:'mouseReleased',...box,button:'left',clickCount:1});}
+const keyCode=code=>({Space:32,Escape:27,ShiftLeft:16}[code]??code.replace(/^(Key|Digit)/,'').charCodeAt(0));
+async function key(code,key,hold=0){const windowsVirtualKeyCode=keyCode(code);await send('Input.dispatchKeyEvent',{type:'keyDown',code,key,windowsVirtualKeyCode,...(code==='Escape'?{nativeVirtualKeyCode:53}:{})});if(hold)await delay(hold);await send('Input.dispatchKeyEvent',{type:'keyUp',code,key,windowsVirtualKeyCode,...(code==='Escape'?{nativeVirtualKeyCode:53}:{})});}
+async function shot(name){const {data}=await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:false});const path=join(output,name+'.png');await writeFile(path,Buffer.from(data,'base64'));report.screenshots.push(path);}
+
+async function hybridChecks(){
+ const heroes=['runner','anchor','breacher','medic','ranger'];
+ await send('Emulation.setDeviceMetricsOverride',{width:1280,height:720,deviceScaleFactor:1,mobile:false});await delay(200);await shot('hybrid-menu-1280');const bounds=await evaluate('(()=>{const c=document.querySelector("#class-picker").getBoundingClientRect(),a=document.querySelector("[data-arena]").getBoundingClientRect();return {classBottom:c.bottom,arenaTop:a.top,scrollHeight:document.querySelector("#menu").scrollHeight,clientHeight:document.querySelector("#menu").clientHeight}})()');check('Menu loadouts do not overlap arenas at 1280x720',bounds.classBottom<=bounds.arenaTop,bounds);await send('Emulation.setDeviceMetricsOverride',{width:1600,height:1000,deviceScaleFactor:1,mobile:false});await delay(100);
+ await click('[data-mode="turf"]');
+ for(let i=0;i<5;i++){await click('[data-class="'+i+'"]');await delay(70);check('Turf loadout '+heroes[i],await evaluate('window.inkbreak.snapshot().controlledClass === '+JSON.stringify(heroes[i])));}
+ await click('[data-class="0"]');await delay(1500);await click('#start');await waitFor('window.inkbreak.state === "playing"');
+ const ready=await evaluate('window.inkbreak.snapshot()');await key('KeyF','f');await delay(100);const active=await evaluate('window.inkbreak.snapshot()');check('Native F activates Turf ability',ready.abilityCooldown===0&&active.abilityCooldown>0&&active.abilityRemaining>0,{before:ready.abilityCooldown,after:active.abilityCooldown,active:active.abilityRemaining});await shot('turf-ability');
+ await key('Escape','Escape');await waitFor('window.inkbreak.state === "paused"');await evaluate('window.inkbreak.menu()');await click('[data-mode="squad"]');await delay(1500);await click('#start');await waitFor('window.inkbreak.state === "playing"');
+ const initial=await evaluate('({snapshot:window.inkbreak.snapshot(),actors:window.inkbreak.match.actors.map(a=>({id:a.id,team:a.team,position:{...a.position}})),revision:window.inkbreak.field.revision})');check('Squad starts five actors per team',initial.actors.length===10&&initial.actors.filter(a=>a.team===1).length===5&&initial.actors.filter(a=>a.team===2).length===5,initial.snapshot);check('Squad objective model',initial.snapshot.objectives.length===6&&initial.snapshot.objectives.filter(o=>o.kind==='core'&&o.locked).length===2,initial.snapshot.objectives);
+ await key('KeyF','f');await delay(80);const original=await evaluate('({...window.inkbreak.match.controlled})');
+ for(let slot=2;slot<=5;slot++){await key('Digit'+slot,String(slot));await delay(80);const current=await evaluate('window.inkbreak.snapshot()');check('Native squad slot '+slot,current.squad.find(a=>a.controlled)?.slot===slot,current.controlledClass);}
+ await key('Digit1','1');await delay(80);const returned=await evaluate('({...window.inkbreak.match.controlled})');check('Squad swap preserves actor ability state',original.id===returned.id&&original.abilityCooldown>0&&returned.abilityCooldown>0&&returned.abilityCooldown<=original.abilityCooldown,{original,returned});
+ await delay(1000);const advanced=await evaluate('({actors:window.inkbreak.match.actors.map(a=>({id:a.id,team:a.team,position:{...a.position}})),revision:window.inkbreak.field.revision})');check('Squad AI teammates and enemies move', [1,2].every(team=>advanced.actors.some(a=>a.team===team&&a.id!==returned.id&&Math.hypot(a.position.x-initial.actors.find(b=>b.id===a.id).position.x,a.position.z-initial.actors.find(b=>b.id===a.id).position.z)>.1)),{initial:initial.actors,advanced:advanced.actors});report.notes.push('AI movement is observed in the browser; line-of-sight and collision correctness additionally require source/unit verification, not this short play segment.');await shot('squad-playing');
+ await key('Escape','Escape');await waitFor('window.inkbreak.state === "paused"');const frozen=await evaluate('JSON.stringify({remaining:window.inkbreak.match.remaining,actors:window.inkbreak.match.actors,objectives:window.inkbreak.match.objectives,revision:window.inkbreak.field.revision})');await delay(500);const still=await evaluate('JSON.stringify({remaining:window.inkbreak.match.remaining,actors:window.inkbreak.match.actors,objectives:window.inkbreak.match.objectives,revision:window.inkbreak.field.revision})');check('Pause freezes all actor and objective simulation',frozen===still);await shot('squad-paused');await delay(1200);await click('#resume');await waitFor('window.inkbreak.state === "playing"');
+ const objectiveCheck=await evaluate('(()=>{const m=window.inkbreak.match,c=m.objectives.find(o=>o.team===2&&o.kind==="core"),hp=c.hp,blocked=m.damageObjective(c.id,9999,1);for(const b of m.objectives.filter(o=>o.team===2&&o.kind==="bunker"))m.damageObjective(b.id,9999,1);const unlocked=!c.locked;const damaged=m.damageObjective(c.id,9999,1);return {blocked,hp,unlocked,damaged,winner:m.winner,finished:m.finished}})()');report.notes.push('Objective victory test uses explicit deterministic match damage setup through the exposed debug object. It verifies locked-core rules and result UI, not a naturally completed combat match.');check('Bunkers protect core until destroyed',!objectiveCheck.blocked&&objectiveCheck.unlocked,objectiveCheck);check('Core destruction resolves winner',objectiveCheck.damaged&&objectiveCheck.winner===1&&objectiveCheck.finished,objectiveCheck);await waitFor('window.inkbreak.state === "results"');check('Objective victory reaches result screen',true);await shot('squad-results');await evaluate('window.inkbreak.menu()');
+}
+
+try{
+ let pages;for(let i=0;i<60;i++){try{pages=await(await fetch('http://127.0.0.1:9228/json/list')).json();break;}catch{await delay(200);}}
+ if(!pages)throw Error('Chrome debugger unavailable: '+chromeLog.slice(-1500));
+ const page=pages.find(x=>x.type==='page');ws=new WebSocket(page.webSocketDebuggerUrl);
+ await new Promise((r,j)=>{ws.addEventListener('open',r,{once:true});ws.addEventListener('error',j,{once:true});});
+ ws.addEventListener('message',({data})=>{const msg=JSON.parse(String(data));if(msg.id){const p=pending.get(msg.id);if(p){clearTimeout(p.timeout);pending.delete(msg.id);msg.error?p.reject(Error(JSON.stringify(msg.error))):p.resolve(msg.result);}}else if(msg.method==='Runtime.exceptionThrown')report.exceptions.push(msg.params.exceptionDetails);else if(msg.method==='Runtime.consoleAPICalled'&&msg.params.type==='error')report.consoleErrors.push(msg.params.args.map(a=>a.value||a.description).join(' '));});
+ await send('Page.enable');await send('Runtime.enable');await send('Page.bringToFront');await send('Emulation.setFocusEmulationEnabled',{enabled:true});await send('Emulation.setDeviceMetricsOverride',{width:1600,height:1000,deviceScaleFactor:1,mobile:false});
+ await send('Page.navigate',{url:baseURL});await waitFor('!!window.inkbreak && !document.querySelector("#menu")?.classList.contains("hidden")',45000);
+ check('Menu boot',true,await evaluate('window.inkbreak.snapshot()'));await shot('menu');
+ const maps=await evaluate('document.querySelectorAll("[data-arena]").length');check('Four arena choices',maps===4,{maps});
+ for(let i=0;i<maps;i++){await click('[data-arena="'+i+'"]');await delay(350);check('Arena '+(i+1),true,await evaluate('window.inkbreak.snapshot().arena'));await shot('arena-'+(i+1));}
+ await click('[data-arena="0"]');await click('#practice');await delay(600);
+ const playing=await evaluate('window.inkbreak.state === "playing"');check('Practice starts with native mouse capture',playing,await evaluate('({state:window.inkbreak.state,pointerLock:!!document.pointerLockElement,focused:document.hasFocus(),activation:navigator.userActivation.isActive,notice:document.querySelector("#notice")?.textContent})'));
+ if(playing){
+  await evaluate('window.__qaEvents=[];for(const t of ["keydown","keyup","blur","focus","pointerlockchange"])document.addEventListener(t,e=>window.__qaEvents.push({type:e.type,code:e.code,key:e.key,trusted:e.isTrusted,lock:!!document.pointerLockElement,focused:document.hasFocus(),state:window.inkbreak.state}));');
+  const before=await evaluate('({x:window.inkbreak.position.x,z:window.inkbreak.position.z})');await key('KeyW','w',200);const after=await evaluate('({x:window.inkbreak.position.x,z:window.inkbreak.position.z})');check('W movement via keyboard input',Math.hypot(after.x-before.x,after.z-before.z)>.3,{before,after});
+  const inkBefore=await evaluate('window.inkbreak.snapshot().ink');await key('KeyJ','j',650);const inkAfter=await evaluate('window.inkbreak.snapshot().ink');check('J fires ink',inkAfter<inkBefore,{inkBefore,inkAfter});
+  await send('Input.dispatchKeyEvent',{type:'keyDown',code:'ShiftLeft',key:'Shift',windowsVirtualKeyCode:16,modifiers:8});await delay(400);const swim=await evaluate('window.inkbreak.snapshot()');await send('Input.dispatchKeyEvent',{type:'keyUp',code:'ShiftLeft',key:'Shift',windowsVirtualKeyCode:16});check('Shift swims and refills in friendly ink',swim.swimming&&swim.ink>inkAfter,{before:inkAfter,after:swim.ink,swimming:swim.swimming});
+  const yBefore=await evaluate('window.inkbreak.position.y');await send('Input.dispatchKeyEvent',{type:'rawKeyDown',code:'Space',key:' ',windowsVirtualKeyCode:32});await delay(160);const yJump=await evaluate('window.inkbreak.position.y');await send('Input.dispatchKeyEvent',{type:'keyUp',code:'Space',key:' ',windowsVirtualKeyCode:32});check('Space jumps',yJump>yBefore+.15,{yBefore,yJump});await delay(650);
+  await key('KeyW','w',220);await key('KeyX','x');await delay(70);const sliding=await evaluate('window.inkbreak.snapshot().sliding');check('X starts a momentum slide',sliding);const slideInkBefore=await evaluate('window.inkbreak.snapshot().ink');await key('KeyJ','j',220);const slideInkAfter=await evaluate('window.inkbreak.snapshot().ink');check('J fires while sliding',sliding&&slideInkAfter<slideInkBefore,{before:slideInkBefore,after:slideInkAfter});await shot('practice-slide');await delay(850);
+  await key('KeyC','c');await shot('practice');
+  const descentSetup=await evaluate('(()=>{const g=window.inkbreak,a=g.match.controlled,b=g.arena.obstacles[0],front=b.z+b.d/2,depth=Math.min(b.h*3.5,29-front),z=front+1,y=1.05+b.h*(1-1/depth),body=g.physics.actors.get(a.id).body,m=g.motions.get(a.id);body.setTranslation({x:b.x,y,z},true);body.setNextKinematicTranslation({x:b.x,y,z});a.position={x:b.x,y,z};m.velocity.set(0,0,0);m.vy=0;return {x:b.x,y,z}})()');await delay(180);const slopeBefore=await evaluate('({z:window.inkbreak.position.z,ink:window.inkbreak.snapshot().ink})');await key('KeyX','x');await key('KeyJ','j',300);const slopeAfter=await evaluate('({z:window.inkbreak.position.z,ink:window.inkbreak.snapshot().ink,sliding:window.inkbreak.snapshot().sliding})');check('Downhill slide advances while shooting',slopeAfter.z>slopeBefore.z+.2&&slopeAfter.ink<slopeBefore.ink,{setup:descentSetup,before:slopeBefore,after:slopeAfter});await shot('ramp-descent');
+  await key('Escape','Escape');await delay(300);check('Escape pauses',await evaluate('window.inkbreak.state === "paused"'),await evaluate('({state:window.inkbreak.state,locked:!!document.pointerLockElement})'));
+  if(await evaluate('window.inkbreak.state === "playing"')){report.notes.push('Chrome headless dispatched trusted Escape but did not invoke its reserved pointer-lock release. Explicit DOM exitPointerLock verifies the loss-of-capture pause path, not native Escape.');await evaluate('document.exitPointerLock()');await waitFor('window.inkbreak.state === "paused"');check('Pointer-lock loss pauses',true);}await shot('pause');await delay(1500);
+  await click('#resume');await delay(500);check('Resume input capture',await evaluate('window.inkbreak.state === "playing"'));
+  report.inputEvents=await evaluate('window.__qaEvents');await evaluate('window.inkbreak.menu()');
+ }
+ if(await evaluate('typeof window.inkbreak.setMode === "function" && !!document.querySelector("[data-mode] [data-mode], button[data-mode]")'))await hybridChecks();
+ // Studio is optional until the current character redesign lands.
+ const studio=await evaluate('document.querySelector("#studio-open, #character-open, [data-open-studio]")?.id || null');
+ if(studio){await click('#'+studio);await delay(500);await shot('character-studio');check('Character studio opens',true);}
+ else report.notes.push('Studio was tested directly at character.html because no matching game-menu shortcut was present.');
+ report.diagnostics=await evaluate('window.inkbreak.diagnostics?.() || window.inkbreak.snapshot()');
+ await send('Page.navigate',{url:new URL('character.html',baseURL).href});await waitFor('!!window.inkbreakStudio',30000);await shot('character-studio');
+ for(const motion of ['idle','run','jump','swim','aim']){await evaluate('(()=>{const e=document.querySelector("#motion");e.value='+JSON.stringify(motion)+';e.dispatchEvent(new Event("change",{bubbles:true}));})()');await delay(450);await shot('studio-'+motion);const rig=await evaluate('(()=>{let bones=0,skinned=0,invalid=0;window.inkbreakStudio.avatar.traverse(o=>{if(o.isBone)bones++;if(o.isSkinnedMesh)skinned++;if(![o.position.x,o.position.y,o.position.z,o.rotation.x,o.rotation.y,o.rotation.z].every(Number.isFinite))invalid++;});return {bones,skinned,invalid}})()');check('Studio motion '+motion,rig.bones>0&&rig.skinned>0&&rig.invalid===0,rig);}
+ for(const body of ['male','female']){await evaluate('(()=>{const e=document.querySelector("#body");e.value='+JSON.stringify(body)+';e.dispatchEvent(new Event("input",{bubbles:true}));})()');await delay(200);check('Studio body '+body,await evaluate('window.inkbreakStudio.getStyle().body === '+JSON.stringify(body)));}
+ for(const id of ['hair','hat','accessory']){const values=await evaluate('Array.from(document.querySelector("#'+id+'").options,x=>x.value)');for(const value of values){await evaluate('(()=>{const e=document.querySelector('+JSON.stringify('#'+id)+');e.value='+JSON.stringify(value)+';e.dispatchEvent(new Event("input",{bubbles:true}));})()');await delay(100);check('Studio '+id+' '+value,await evaluate('window.inkbreakStudio.getStyle()['+JSON.stringify(id)+'] === '+JSON.stringify(value)));}}
+ await send('Page.navigate',{url:new URL('character.html?cover=1',baseURL).href});await waitFor('!!window.inkbreakStudio');await delay(1200);await shot('cover-preview');
+ check('No uncaught JavaScript exceptions',report.exceptions.length===0,report.exceptions);
+}catch(error){report.fatal=String(error?.stack||error);try{report.failurePage=await evaluate('({url:location.href,title:document.title,body:document.body.innerText.slice(0,4000)})');await shot('failure');}catch{}console.error(error);process.exitCode=1;}
+finally{if(report.checks.some(check=>!check.ok)||report.exceptions.length||report.consoleErrors.length)process.exitCode=1;report.finished=new Date().toISOString();await writeFile(join(output,'report.json'),JSON.stringify(report,null,2));ws?.close();chrome.kill('SIGTERM');await delay(300);await rm(profile,{recursive:true,force:true,maxRetries:3}).catch(()=>{});}

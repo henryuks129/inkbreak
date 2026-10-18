@@ -1,0 +1,26 @@
+{
+  "name": "inkbreak",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "test": "node --experimental-transform-types --test src/*.test.ts",
+    "release:verify": "node scripts/verify-release.mjs",
+    "release:prepare": "npm test && npm run build && npm run release:verify"
+  },
+  "dependencies": {
+    "three": "^0.180.0",
+    "@dimforge/rapier3d-compat": "^0.19.0",
+    "@fontsource/space-grotesk": "^5.2.0",
+    "@fontsource/barlow-condensed": "^5.2.0"
+  },
+  "devDependencies": {
+    "@types/three": "^0.180.0",
+    "typescript": "https://registry.npmjs.org/typescript/-/typescript-5.9.3.tgz",
+    "vite": "https://registry.npmjs.org/vite/-/vite-7.1.0.tgz",
+    "@types/node": "https://registry.npmjs.org/@types/node/-/node-24.0.0.tgz"
+  }
+}
