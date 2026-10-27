@@ -95,10 +95,10 @@ export function getInkSpeed(surface: Team, swimming: boolean, playerTeam: InkTea
   return swimming && surface === playerTeam ? 1.85 : 1;
 }
 
-/** Ink units per second: spray costs 15, friendly swimming restores 34, idle restores 5. */
+/** Friendly swimming refills a full tank in about 2.3 seconds; idle refill takes about 8 seconds. */
 export function updateInk(ink: number, dt: number, swimming: boolean, onFriendlyInk: boolean, firing: boolean): number {
   const current = Number.isFinite(ink) ? Math.min(100, Math.max(0, ink)) : 0;
   if (!Number.isFinite(dt) || dt <= 0) return current;
-  const rate = firing && !swimming ? -15 : swimming && onFriendlyInk ? 34 : 5;
+  const rate = firing && !swimming ? -12 : swimming && onFriendlyInk ? 44 : 12;
   return Math.min(100, Math.max(0, current + rate * dt));
 }

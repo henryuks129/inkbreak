@@ -64,3 +64,8 @@ test('friendly swim refills faster, enemy ink slows, tank remains bounded', () =
   assert.equal(updateInk(2, 1, false, false, true), 0);
   assert.equal(updateInk(50, -1, false, false, true), 50);
 });
+
+test('friendly ink restores a dry tank quickly enough for continuous combat', () => {
+  assert.equal(updateInk(0, 2.3, true, true, false), 100);
+  assert.ok(updateInk(0, 2.3, false, false, false) < 40);
+});

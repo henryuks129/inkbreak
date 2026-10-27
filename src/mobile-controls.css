@@ -1,0 +1,17 @@
+.touch-controls[hidden]{display:none!important}
+.touch-controls{position:fixed;inset:0;z-index:7;pointer-events:none;font-family:'Trebuchet MS',sans-serif;user-select:none;-webkit-user-select:none;touch-action:none}
+.touch-aim{position:absolute;left:47%;right:0;top:15%;bottom:0;pointer-events:auto;touch-action:none;display:flex;align-items:center;justify-content:center;color:#f6f4dc66;font-size:10px;letter-spacing:.12em}
+.touch-aim span{position:absolute;top:14%;right:14%;pointer-events:none}
+.touch-stick{position:absolute;left:max(4vw,16px);bottom:max(6vh,22px);width:clamp(116px,24vw,168px);height:clamp(116px,24vw,168px);pointer-events:auto;touch-action:none;display:grid;place-items:center}
+.touch-stick-track{width:78%;height:78%;border-radius:50%;border:2px solid #e4ff62bb;background:#14241fac;display:grid;place-items:center;box-shadow:0 7px 25px #081b2099}
+.touch-stick-nub{width:44%;height:44%;border-radius:50%;background:#e4ff62e6;box-shadow:0 2px 12px #071b1c88}
+.touch-stick small{position:absolute;bottom:-5px;color:#f6f4dc;font-size:10px;font-weight:700;letter-spacing:.13em}
+.touch-buttons{position:absolute;right:max(3vw,12px);bottom:max(6vh,22px);width:clamp(188px,36vw,280px);height:clamp(160px,32vw,220px);pointer-events:none}
+.touch-button{position:absolute;display:grid;place-items:center;width:clamp(52px,11vw,70px);height:clamp(52px,11vw,70px);border-radius:50%;border:2px solid #f6f4dcb8;background:#14241fe8;color:#f6f4dc;font-size:10px;font-weight:800;letter-spacing:.05em;pointer-events:auto;touch-action:none;box-shadow:0 5px 15px #0c171899;-webkit-tap-highlight-color:transparent}
+.touch-button.is-held,.touch-button:active{transform:scale(.94);background:#e4ff62;color:#152620;border-color:#e4ff62}
+.touch-button:focus-visible{outline:3px solid #e4ff62;outline-offset:3px}
+.touch-fire{right:0;bottom:28%;width:clamp(70px,16vw,96px);height:clamp(70px,16vw,96px);background:#ff595eea;border-color:#ffd2d2}
+.touch-jump{right:35%;bottom:62%}.touch-ability{right:62%;bottom:22%;border-color:#20ddcf;color:#a9fff1}
+.touch-slide{right:38%;bottom:0}.touch-swim{right:70%;bottom:66%}.touch-switch{right:0;bottom:78%;display:none}
+.touch-controls.has-squad .touch-switch{display:grid}.touch-pause{top:13px;right:13px;width:42px;height:42px;font-size:22px}
+@media (orientation:portrait){.touch-stick{bottom:9vh;width:31vw;height:31vw}.touch-buttons{bottom:9vh;width:48vw;height:42vw}.touch-button{width:12vw;height:12vw;font-size:8px}.touch-fire{width:17vw;height:17vw}.touch-aim{left:42%;top:21%}.touch-aim span{top:7%;right:8%}}

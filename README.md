@@ -11,7 +11,7 @@ npm install
 npm run dev
 ```
 
-Open the URL printed by Vite. Select **Turf Clash** or **Squad Assault**, a class and one of four arenas; then click **Let it rip** to capture the mouse. WASD move, mouse aim, left click or J fire, Space jump, C recenter camera, Shift swim/refill in friendly ink, **X slide while moving and keep shooting**, F class ability, Escape pause/release pointer. Slopes add downhill momentum; cover pockets provide escape routes. In Squad Assault, 1–5 switch among living friendly fighters; their health, ink and cooldowns persist. Runner dashes, Anchor shields, Breacher bursts, Medic heals and Ranger takes precision shots. Practice disables enemies and the timer. Graphics settings offer performance/high/ultra, independent resolution scale, sensitivity, sound and frame-time monitor.
+Open the URL printed by Vite. Select **Turf Clash** or **Squad Assault**, a class and one of four arenas; then click **Let it rip** to capture the mouse. WASD move, mouse aim, left click or J fire, Space jump, C recenter camera, Shift swim/refill in friendly ink, **X slide while moving and keep shooting**, F class ability, Escape pause/release pointer. Keys can be remapped in Settings. Touch devices show an on-screen move stick, drag-to-aim region, fire/swim holds, and jump/slide/skill/swap controls. Slopes add downhill momentum; cover pockets provide escape routes. In Squad Assault, 1–5 switch among living friendly fighters; their health, ink and cooldowns persist. Runner dashes, Anchor shields, Breacher bursts, Medic heals and Ranger takes precision shots. Practice disables enemies and the timer. Graphics settings offer performance/high/ultra, independent resolution scale, sensitivity, sound and frame-time monitor.
 
 ```sh
 npm test
@@ -30,15 +30,18 @@ npm run preview
 - `character-studio.ts`: interactive character/animation preview at `/character.html`.
 - `physics.ts`: Rapier kinematic capsule and static world colliders.
 - `engine.ts`: fixed-step game orchestration, shared actor physics, navigation, AI, camera, projectiles and effects.
-- `input.ts`: keyboard, mouse capture, focus-loss handling.
+- `input.ts` / `control-bindings.ts` / `mobile-controls.ts`: remappable keyboard, mouse capture, touch input and focus-loss handling.
 - `main.ts` / `style.css`: DOM menu, HUD, settings, match results.
 - `platform.ts`: validated host identity/appearance adapter boundary.
+- `startng-competition.ts`: hosted all-time best score and leaderboard frame adapter.
 
 ## start.ng integration
 
 The game follows [start.ng's official contract](https://start.ng/docs.md). On a `*.start.ng` host it loads the official hidden connect frame and asks `startng:whoami`, validating origin, source and request correlation. The playable character uses the returned body, clothing/skin/hair colors, hair, hat and accessory. Focus/visibility refresh updates signed-in or guest identities. An explicit sign-in link returns players through start.ng; the game handles no passwords or account tokens. Localhost remains standalone. `window.inkbreakHost` remains a legacy integration seam.
 
-Publication is **pending the owner's push** and start.ng's check and approval. Only the user may push to GitHub. See [release-ready.md](docs/release-ready.md) for the commands and proof states. No game-code license is included, as requested; bundled library/font notices are in `public/third-party-notices.txt`.
+The existing game is live at [inkbreak.start.ng](https://inkbreak.start.ng/). New local changes reach the live game only after the owner commits and pushes the built release. Only the user may push to GitHub. See [release-ready.md](docs/release-ready.md) for the release commands. No game-code license is included, as requested; bundled library/font notices are in `public/third-party-notices.txt`.
+
+Hosted signed-in matches can save a player's best score; the menu can read the all-time board. `public/startng.json` declares points, splats and paint. The game includes a visible start.ng link and a result sharing action. The built-in board is not a verified multiplayer ranking: the current modes use bots, and start.ng documents only a single all-time best per signed-in player. See [tournament-v2.md](docs/tournament-v2.md) for the larger online competition plan and required service boundary.
 
 Source HTML is under `app/`, with no root source `index.html` to shadow `dist/`. `npm run release:prepare` tests, builds and checks the ready-to-play `dist/` output, cover dimensions/size, relative asset references and hosting limits. Commit the built `dist/` directory when publishing: start.ng does not run npm or Vite.
 
@@ -50,4 +53,4 @@ Automatic resolution adjusts between 60–100% of the selected scale under susta
 
 ## Current scope
 
-Turf Clash and Squad Assault are local single-player modes with AI. Character Lab previews animation and style choices; the game uses the player's actual start.ng identity, not the lab's temporary selections. Controller input, network multiplayer, wall swimming and full commercial-game fidelity remain future work. Each arena includes two sloped ramps sharing vertices between rendering and Rapier collision.
+Turf Clash and Squad Assault are local single-player modes with AI. Character Lab previews animation and style choices; the game uses the player's actual start.ng identity, not the lab's temporary selections. Controller input, network multiplayer, tournament boards, play-earned tokens, wall swimming and full commercial-game fidelity remain future work. Each arena includes two sloped ramps sharing vertices between rendering and Rapier collision.

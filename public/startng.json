@@ -1,0 +1,10 @@
+{
+  "description": "Inkbreak is an original ink arena shooter with Turf Clash and Squad Assault across four arenas.",
+  "leaderboard": {
+    "stats": [
+      { "key": "points", "label": "Match points", "order": "highest" },
+      { "key": "splats", "label": "Splats", "order": "highest" },
+      { "key": "paint", "label": "Paint coverage", "order": "highest" }
+    ]
+  }
+}

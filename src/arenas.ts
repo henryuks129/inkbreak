@@ -3,6 +3,7 @@ export type ArenaProp = { kind: 'rail' | 'lamp' | 'sign' | 'tank' | 'tree' | 'cr
 export type ArenaDefinition = {
   id: string; name: string; subtitle: string; description: string;
   accent: string; sky: string; ground: string;
+  landmark: 'plaza-arcade' | 'lagoon-terminal' | 'roof-water-tower' | 'transit-clock';
   spawn: [number, number]; botSpawns: [number, number][];
   obstacles: ArenaBlock[]; props: ArenaProp[];
 };
@@ -39,6 +40,7 @@ export const ARENAS: ArenaDefinition[] = [
     id: 'kickflip-court', name: 'Kickflip Court', subtitle: 'SUNLIT SKATE PLAZA',
     description: 'Carve through concrete islands and take the open centre in a sunwashed skate plaza.',
     accent: '#d9ff43', sky: '#a8d9e0', ground: '#b9b6a8',
+    landmark: 'plaza-arcade',
     spawn: [0, 24], botSpawns: [[-20, -23], [0, -24], [20, -23]],
     obstacles: [
       { x: -18, z: 15, w: 9, d: 4, h: 1.2 }, { x: 18, z: 15, w: 9, d: 4, h: 1.2 },
@@ -62,6 +64,7 @@ export const ARENAS: ArenaDefinition[] = [
     id: 'freight-frequency', name: 'Freight Frequency', subtitle: 'DOCKSIDE CONTAINER YARD',
     description: 'Cut between stacked freight, wide cross lanes, and bright harbour-side cover.',
     accent: '#ff9b55', sky: '#b7c9d5', ground: '#6b7e86',
+    landmark: 'lagoon-terminal',
     spawn: [0, 24], botSpawns: [[-22, -24], [0, -24], [22, -24]],
     obstacles: [
       { x: -17, z: 16, w: 12, d: 5, h: 3, color: '#df784e' },
@@ -88,6 +91,7 @@ export const ARENAS: ArenaDefinition[] = [
     id: 'afterglow-heights', name: 'Afterglow Heights', subtitle: 'CITY ROOFTOP GARDEN',
     description: 'Race between garden terraces and rooftop machinery above the evening skyline.',
     accent: '#e8a3ff', sky: '#b7a8cf', ground: '#9695a6',
+    landmark: 'roof-water-tower',
     spawn: [0, 24], botSpawns: [[-22, -24], [0, -24], [22, -24]],
     obstacles: [
       { x: -17, z: 16, w: 10, d: 4, h: 1.5, color: '#cfb6a6' },
@@ -116,6 +120,7 @@ export const ARENAS: ArenaDefinition[] = [
     id: 'relay-works', name: 'Relay Works', subtitle: 'CONVERTED INDUSTRIAL HALL',
     description: 'Trade paint across machine islands, storage bays, and an exposed central corridor.',
     accent: '#63e8da', sky: '#a7bdc1', ground: '#82908b',
+    landmark: 'transit-clock',
     spawn: [0, 24], botSpawns: [[-22, -24], [0, -24], [22, -24]],
     obstacles: [
       { x: -17, z: 17, w: 9, d: 4, h: 2.4, color: '#667f78' },

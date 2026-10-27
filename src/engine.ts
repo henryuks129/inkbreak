@@ -137,7 +137,7 @@ export class Game {
       if(actor.id===controlled.id){
         if(this.input.consume('KeyC')){this.input.yaw=motion.yaw;this.input.pitch=-.12;}
         motion.swim=this.input.down('ShiftLeft','ShiftRight')&&friendly&&actor.position.y<1.2;
-        const forward=Number(this.input.down('KeyW','ArrowUp'))-Number(this.input.down('KeyS','ArrowDown')),strafe=Number(this.input.down('KeyD','ArrowRight'))-Number(this.input.down('KeyA','ArrowLeft'));desired.set(strafe,0,-forward);if(desired.lengthSq())desired.normalize();desired.applyAxisAngle(Y,this.input.yaw);
+        const forward=Number(this.input.down('KeyW','ArrowUp'))-Number(this.input.down('KeyS','ArrowDown'))+this.input.virtualY,strafe=Number(this.input.down('KeyD','ArrowRight'))-Number(this.input.down('KeyA','ArrowLeft'))+this.input.virtualX;desired.set(strafe,0,-forward);if(desired.lengthSq()>1)desired.normalize();desired.applyAxisAngle(Y,this.input.yaw);
         const slope=downhillAt(this.arena,actor.position.x,actor.position.y,actor.position.z);
         if(this.input.consume('KeyX')&&body.grounded&&!motion.swim&&(motion.velocity.length()>2||slope)){motion.slide=1.05;if(motion.velocity.length()<4&&slope)motion.velocity.set(slope.x*4,0,slope.z*4);else motion.velocity.multiplyScalar(1.3);}
         if(!body.grounded||motion.swim)motion.slide=0;

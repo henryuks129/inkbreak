@@ -120,6 +120,47 @@ export class ArenaView {
       mesh.position.set(ramp.x, 0, ramp.z); mesh.castShadow = true; mesh.receiveShadow = true;
       this.group.add(mesh);
     }
+    // Each shelter gets a visible upper edge; the opening and the collision hull stay clear.
+    const shelterTrim = material(arena.accent);
+    for (const side of [-1, 1]) for (const end of [-1, 1]) {
+      this.group.add(box(5.2, .12, 1.35, shelterTrim, side * 25, 2.34, end * 11));
+      this.group.add(box(.16, .8, .16, dark, side * 27.5, 2.7, end * 13.1));
+    }
+    // Painted route arrows make the downhill cover approaches legible at speed.
+    for (const ramp of getArenaRamps(arena)) {
+      const tip = box(.17, .015, 1.15, line, ramp.x, .035, Math.min(ramp.z + ramp.d / 2 + 1.5, 28));
+      tip.rotation.y = ramp.x < 0 ? -.48 : .48;
+      this.group.add(tip);
+    }
+    // Original city silhouettes sit beyond the fence and never alter combat collision.
+    // Their simple primitives merge into the existing static material batches.
+    const facade = material(arena.id === 'afterglow-heights' ? '#707a89' : '#607b80');
+    const landmarkBright = material(arena.accent);
+    if (arena.landmark === 'plaza-arcade') {
+      // A shaded neighborhood arcade frames the far end of the skate plaza.
+      this.group.add(box(22, .5, 5, facade, 0, 6.6, -39));
+      for (const x of [-10, -5, 0, 5, 10]) this.group.add(box(.55, 6.4, .55, facade, x, 3.2, -37));
+      for (const x of [-7.5, -2.5, 2.5, 7.5]) this.group.add(box(3.6, .16, .12, landmarkBright, x, 5.9, -36.65));
+    } else if (arena.landmark === 'lagoon-terminal') {
+      // A low waterfront terminal and one tall marker remain clear of the dock cranes.
+      this.group.add(box(20, 4.2, 5, facade, 0, 2.1, -40));
+      this.group.add(box(23, .5, 6, landmarkBright, 0, 4.5, -40));
+      this.group.add(box(1.1, 11, 1.1, facade, 10, 5.5, -39));
+      this.group.add(box(3.3, .7, 3.3, landmarkBright, 10, 11.3, -39));
+    } else if (arena.landmark === 'roof-water-tower') {
+      // Roof tanks are a familiar city silhouette, held above the playable roof line.
+      this.group.add(box(19, 4, 6, facade, 0, 1, -40));
+      for (const x of [-3, 3]) this.group.add(box(.3, 5.5, .3, facade, x, 5.7, -39));
+      this.group.add(cylinder(3.7, 3.5, facade, 0, 10, -39));
+      this.group.add(cylinder(3.8, .18, landmarkBright, 0, 11.8, -39));
+    } else {
+      // A transit-depot clock tower gives the long industrial lane a fixed bearing.
+      this.group.add(box(8, 13, 5, facade, 0, 6.5, -40));
+      this.group.add(box(10, .5, 6, landmarkBright, 0, 13.25, -40));
+      const clock = new THREE.Mesh(new THREE.CircleGeometry(1.35, 16), landmarkBright);
+      clock.position.set(0, 10.3, -37.44); clock.castShadow = false; this.group.add(clock);
+      this.group.add(box(.1, .85, .08, dark, 0, 10.6, -37.37));
+    }
     // Open mesh fence stays beyond the playable boundary.
     for (let k = -30; k <= 30; k += 5) for (const edge of [-31, 31]) {
       this.group.add(cylinder(.065, 2.4, dark, k, 1.2, edge), cylinder(.065, 2.4, dark, edge, 1.2, k));

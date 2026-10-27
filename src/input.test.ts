@@ -24,3 +24,27 @@ test('jump and camera presses are consumed once and reset with focus',()=>{
  win.dispatchEvent(Object.assign(new Event('keyup'),{code:'Space'}));press('Space');assert.equal(input.consume('Space'),true);
  press('KeyC');input.clear();assert.equal(input.consume('KeyC'),false);input.dispose();
 });
+
+test('remapped movement and fire use their new keys and release cleanly',()=>{
+ const win=new EventTarget(),doc=Object.assign(new EventTarget(),{pointerLockElement:null as unknown,hidden:false});
+ Object.assign(globalThis,{window:win,document:doc});const canvas={};doc.pointerLockElement=canvas;
+ const input=new Input(canvas as HTMLCanvasElement);input.setBindings({forward:'KeyI',fire:'KeyK'});
+ const event=(type:string,code:string)=>win.dispatchEvent(Object.assign(new Event(type),{code,preventDefault(){}}));
+ event('keydown','KeyW');assert.equal(input.down('KeyW'),false);
+ event('keydown','KeyI');assert.equal(input.down('KeyW'),true);event('keyup','KeyI');assert.equal(input.down('KeyW'),false);
+ event('keydown','KeyK');assert.equal(input.down('KeyJ'),true);event('keyup','KeyK');assert.equal(input.down('KeyJ'),false);
+ input.dispose();
+});
+
+test('touch mode captures without pointer lock and clears virtual controls on focus loss',async()=>{
+ const win=new EventTarget(),doc=Object.assign(new EventTarget(),{pointerLockElement:null as unknown,hidden:false});
+ Object.assign(globalThis,{window:win,document:doc});
+ const canvas={requestPointerLock:async()=>{throw Error('Pointer lock unavailable');}};
+ const input=new Input(canvas as unknown as HTMLCanvasElement);let pauses=0;input.onPause=()=>pauses++;
+ input.setTouchMode(true);assert.equal(await input.capture(),true);
+ input.setVirtualMove(.6,.8);input.setVirtualHeld('KeyJ',true);input.pressVirtual('Space');input.setVirtualLook(20,-10);
+ assert.equal(input.virtualX,.6);assert.equal(input.virtualY,.8);assert.equal(input.down('KeyJ'),true);assert.equal(input.consume('Space'),true);assert.notEqual(input.yaw,0);
+ doc.dispatchEvent(new Event('pointerlockchange'));assert.equal(pauses,0);
+ win.dispatchEvent(new Event('blur'));assert.equal(pauses,1);assert.equal(input.virtualX,0);assert.equal(input.down('KeyJ'),false);
+ input.dispose();
+});

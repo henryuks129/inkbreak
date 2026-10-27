@@ -8,11 +8,11 @@ export interface HeroDefinition {
   projectileSpeed:number; inkCost:number; abilityCooldown:number; abilityDuration:number;
 }
 export const HEROES:Readonly<Record<HeroId,Readonly<HeroDefinition>>> = {
-  runner:{name:'Zip',maxHp:100,speed:8,damage:23,fireInterval:.12,projectileSpeed:38,inkCost:1.8,abilityCooldown:8,abilityDuration:.7},
-  anchor:{name:'Bastion',maxHp:160,speed:5.8,damage:26,fireInterval:.2,projectileSpeed:32,inkCost:2.2,abilityCooldown:12,abilityDuration:3},
-  breacher:{name:'Rivet',maxHp:115,speed:7,damage:20,fireInterval:.19,projectileSpeed:34,inkCost:2.1,abilityCooldown:10,abilityDuration:2},
-  medic:{name:'Mender',maxHp:105,speed:7.4,damage:18,fireInterval:.13,projectileSpeed:36,inkCost:1.7,abilityCooldown:12,abilityDuration:0},
-  ranger:{name:'Vesper',maxHp:85,speed:7,damage:44,fireInterval:.55,projectileSpeed:62,inkCost:5,abilityCooldown:10,abilityDuration:3},
+  runner:{name:'Zip',maxHp:100,speed:8.6,damage:23,fireInterval:.12,projectileSpeed:38,inkCost:1.2,abilityCooldown:8,abilityDuration:.7},
+  anchor:{name:'Bastion',maxHp:160,speed:6.2,damage:26,fireInterval:.2,projectileSpeed:32,inkCost:1.6,abilityCooldown:12,abilityDuration:3},
+  breacher:{name:'Rivet',maxHp:115,speed:7.5,damage:20,fireInterval:.19,projectileSpeed:34,inkCost:1.5,abilityCooldown:10,abilityDuration:2},
+  medic:{name:'Mender',maxHp:105,speed:7.9,damage:18,fireInterval:.13,projectileSpeed:36,inkCost:1.2,abilityCooldown:12,abilityDuration:0},
+  ranger:{name:'Vesper',maxHp:85,speed:7.5,damage:44,fireInterval:.55,projectileSpeed:62,inkCost:3.6,abilityCooldown:10,abilityDuration:3},
 };
 export interface Actor {
   id:string; team:CombatTeam; slot:Slot; hero:HeroId; position:Position; spawn:Position;
